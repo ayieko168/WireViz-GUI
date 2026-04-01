@@ -5,17 +5,21 @@ from __future__ import annotations
 from typing import Iterable
 
 from PySide6.QtCore import QByteArray, Qt
-from PySide6.QtGui import QColor, QBrush, QPainter
+from PySide6.QtGui import QAction, QColor, QBrush, QKeySequence, QPainter
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtSvgWidgets import QGraphicsSvgItem
 from PySide6.QtWidgets import (
+	QApplication,
 	QGraphicsScene,
 	QGraphicsView,
 	QHeaderView,
+	QMenu,
 	QPushButton,
+	QStyle,
 	QTableWidget,
 	QTableWidgetItem,
 	QTabWidget,
+	QToolButton,
 	QVBoxLayout,
 	QWidget,
 )
@@ -56,6 +60,49 @@ class DiagramView(QGraphicsView):
 		self.fit_diagram()
 
 
+class BomTableWidget(QTableWidget):
+	def __init__(self, parent=None) -> None:
+		super().__init__(parent)
+		self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+		self.customContextMenuRequested.connect(self._show_context_menu)
+
+	def _show_context_menu(self, position) -> None:
+		menu = QMenu(self)
+		copy_action = QAction("Copy", self)
+		copy_action.setShortcut(QKeySequence.StandardKey.Copy)
+		copy_action.triggered.connect(self.copy_selected_cells)
+		menu.addAction(copy_action)
+		menu.exec(self.viewport().mapToGlobal(position))
+
+	def keyPressEvent(self, event) -> None:
+		if event.matches(QKeySequence.StandardKey.Copy):
+			self.copy_selected_cells()
+			event.accept()
+			return
+		super().keyPressEvent(event)
+
+	def copy_selected_cells(self) -> None:
+		ranges = self.selectedRanges()
+		if not ranges:
+			self.selectAll()
+			ranges = self.selectedRanges()
+			if not ranges:
+				return
+
+		cell_range = ranges[0]
+		lines = []
+		for row in range(cell_range.topRow(), cell_range.bottomRow() + 1):
+			row_values = []
+			for col in range(cell_range.leftColumn(), cell_range.rightColumn() + 1):
+				item = self.item(row, col)
+				row_values.append(item.text() if item else "")
+			lines.append("\t".join(row_values))
+
+		if lines:
+			QApplication.clipboard().setText("\n".join(lines))
+		self.clearSelection()
+
+
 class PreviewPanel(QWidget):
 	def __init__(self, parent=None) -> None:
 		super().__init__(parent)
@@ -64,7 +111,10 @@ class PreviewPanel(QWidget):
 		self.tabs.setObjectName("preview_tabs")
 
 		self.diagram_view = DiagramView(self)
-		self.fit_button = QPushButton("Fit", self)
+		self.fit_button = QToolButton(self)
+		self.fit_button.setText("Fit")
+		self.fit_button.setToolTip("Fit diagram to view")
+		self.fit_button.setFixedSize(50, 28)
 		self.fit_button.clicked.connect(self.diagram_view.fit_diagram)
 		diagram_container = QWidget(self)
 		diagram_layout = QVBoxLayout(diagram_container)
@@ -72,7 +122,7 @@ class PreviewPanel(QWidget):
 		diagram_layout.addWidget(self.diagram_view)
 		diagram_layout.addWidget(self.fit_button, alignment=Qt.AlignmentFlag.AlignRight)
 
-		self.bom_table = QTableWidget(self)
+		self.bom_table = BomTableWidget(self)
 		self.bom_table.setObjectName("bom_table")
 		self.bom_table.setSortingEnabled(True)
 		self.bom_table.setAlternatingRowColors(True)

@@ -140,7 +140,10 @@ class EditorTabs(QTabWidget):
 		button.setAutoRaise(True)
 		button.setCursor(Qt.CursorShape.PointingHandCursor)
 		button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-		button.setFixedSize(18, 18)
+		button.setFixedSize(16, 16)
+		font = QFont()
+		font.setPointSize(9)
+		button.setFont(font)
 		button.clicked.connect(lambda _checked=False, b=button: self._close_by_button(b))
 		return button
 
@@ -222,3 +225,13 @@ class EditorTabs(QTabWidget):
 		self.removeTab(index)
 		if self.count() == 0:
 			self.new_tab()
+
+	def select_next_tab(self) -> None:
+		if self.count() <= 1:
+			return
+		self.setCurrentIndex((self.currentIndex() + 1) % self.count())
+
+	def select_previous_tab(self) -> None:
+		if self.count() <= 1:
+			return
+		self.setCurrentIndex((self.currentIndex() - 1) % self.count())

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer, Slot
-from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
+from PySide6.QtCore import Qt, QSize, QTimer, QUrl, Slot
+from PySide6.QtGui import QAction, QCloseEvent, QDesktopServices, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -14,13 +14,15 @@ from PySide6.QtWidgets import (
     QSplitter,
     QStatusBar,
     QSizePolicy,
+    QStyle,
     QWidget,
 )
 
 from wireviz_studio import APP_NAME
 from wireviz_studio.graphviz_manager import resolve_dot_version
 from wireviz_studio.gui.editor import EditorTabs
-from wireviz_studio.gui.export import ExportDialog
+from wireviz_studio.core.exceptions import WireVizStudioError
+from wireviz_studio.gui.export import ExportDialog, ExportWorker
 from wireviz_studio.gui.preview import PreviewPanel
 from wireviz_studio.gui.graphviz_setup_dialog import GraphVizSetupDialog
 from wireviz_studio.gui.settings import AppSettings
@@ -34,6 +36,9 @@ class MainWindow(QMainWindow):
         self._settings = settings
         self._app = app
         self._render_worker: RenderWorker | None = None
+        self._export_worker: ExportWorker | None = None
+        self._last_svg: str = ""
+        self._last_bom: list[dict] = []
 
         self.setWindowTitle(APP_NAME)
         self.resize(1360, 820)
@@ -58,6 +63,12 @@ class MainWindow(QMainWindow):
         self.editor_tabs.currentFilePathChanged.connect(self._on_current_file_changed)
         self.editor_tabs.currentContentChanged.connect(self._on_content_changed)
 
+        # Ensure tab switching works even when focus is inside the editor widget.
+        shortcut_next = QShortcut(QKeySequence("Ctrl+Tab"), self)
+        shortcut_next.activated.connect(self.editor_tabs.select_next_tab)
+        shortcut_prev = QShortcut(QKeySequence("Ctrl+Shift+Tab"), self)
+        shortcut_prev.activated.connect(self.editor_tabs.select_previous_tab)
+
         self._restore_window_state()
         graphviz_found = self._update_graphviz_status()
         self._refresh_recent_files_menu()
@@ -68,14 +79,17 @@ class MainWindow(QMainWindow):
     def _build_actions(self) -> None:
         self.act_new = QAction("New", self)
         self.act_new.setShortcut(QKeySequence.StandardKey.New)
+        self.act_new.setToolTip("Create a new YAML tab")
         self.act_new.triggered.connect(lambda: self.editor_tabs.new_tab())
 
         self.act_open = QAction("Open", self)
         self.act_open.setShortcut(QKeySequence.StandardKey.Open)
+        self.act_open.setToolTip("Open an existing YAML file")
         self.act_open.triggered.connect(self._open_file_dialog)
 
         self.act_save = QAction("Save", self)
         self.act_save.setShortcut(QKeySequence.StandardKey.Save)
+        self.act_save.setToolTip("Save current YAML file")
         self.act_save.triggered.connect(self._save_current)
 
         self.act_save_as = QAction("Save As", self)
@@ -90,12 +104,15 @@ class MainWindow(QMainWindow):
 
         self.act_render = QAction("Render", self)
         self.act_render.setShortcut(QKeySequence("F5"))
+        self.act_render.setToolTip("Render diagram and BOM")
         self.act_render.triggered.connect(self._render_current)
 
         self.act_export = QAction("Export", self)
+        self.act_export.setToolTip("Export rendered output")
         self.act_export.triggered.connect(self._show_export_dialog)
 
         self.act_fit = QAction("Fit Diagram", self)
+        self.act_fit.setToolTip("Fit diagram to view")
         self.act_fit.triggered.connect(self.preview_panel.diagram_view.fit_diagram)
 
         self.act_theme = QAction("Dark Theme", self)
@@ -105,6 +122,10 @@ class MainWindow(QMainWindow):
 
         self.act_check_graphviz = QAction("Check for GraphViz Updates", self)
         self.act_check_graphviz.triggered.connect(self._show_graphviz_check_dialog)
+
+        self.act_syntax_ref = QAction("Syntax Reference", self)
+        self.act_syntax_ref.setToolTip("Open WireViz syntax reference documentation")
+        self.act_syntax_ref.triggered.connect(self._show_syntax_reference)
 
         self.act_about = QAction("About", self)
         self.act_about.triggered.connect(self._show_about)
@@ -135,12 +156,15 @@ class MainWindow(QMainWindow):
         menu_tools.addAction(self.act_check_graphviz)
 
         menu_help = self.menuBar().addMenu("Help")
+        menu_help.addAction(self.act_syntax_ref)
+        menu_help.addSeparator()
         menu_help.addAction(self.act_about)
 
     def _build_toolbar(self) -> None:
         toolbar = self.addToolBar("Main")
         toolbar.setObjectName("main_toolbar")
         toolbar.setMovable(False)
+        toolbar.setIconSize(QSize(18, 18))
         toolbar.addAction(self.act_new)
         toolbar.addAction(self.act_open)
         toolbar.addAction(self.act_save)
@@ -230,12 +254,16 @@ class MainWindow(QMainWindow):
 
     @Slot(str, list)
     def _on_render_complete(self, svg_data: str, bom_rows: list) -> None:
+        self._last_svg = svg_data
+        self._last_bom = list(bom_rows)
         self.preview_panel.set_svg(svg_data)
         self.preview_panel.set_bom(bom_rows)
         self._set_render_status("Rendered successfully")
 
-    @Slot(str)
-    def _on_render_error(self, message: str) -> None:
+    @Slot(object)
+    def _on_render_error(self, error: object) -> None:
+        typed_error = error if isinstance(error, WireVizStudioError) else WireVizStudioError(str(error))
+        message = f"{typed_error.__class__.__name__}: {typed_error}"
         self._set_render_status(f"Render failed: {message}")
         QMessageBox.critical(self, "Render Error", message)
 
@@ -247,6 +275,14 @@ class MainWindow(QMainWindow):
             self._render_worker = None
 
     def _show_export_dialog(self) -> None:
+        if not self._last_svg:
+            QMessageBox.information(self, "Export", "Render the diagram before exporting.")
+            return
+
+        if self._export_worker and self._export_worker.isRunning():
+            self._set_render_status("Export already in progress")
+            return
+
         dialog = ExportDialog(
             self,
             default_path=self._settings.last_export_path or self._settings.last_export_dir,
@@ -267,21 +303,55 @@ class MainWindow(QMainWindow):
         self._settings.export_dialog_size = dialog.size()
         if selection.output_path:
             self._settings.last_export_dir = str(Path(selection.output_path).parent)
-        QMessageBox.information(
-            self,
-            "Export",
-            "Export processing will be implemented in the export layer in a subsequent phase.",
-        )
+
+        self._export_worker = ExportWorker(selection, self._last_svg, self._last_bom)
+        self._export_worker.progress.connect(self._on_export_progress)
+        self._export_worker.completed.connect(self._on_export_completed)
+        self._export_worker.failed.connect(self._on_export_failed)
+        self._export_worker.finished.connect(self._on_export_finished)
+        self.act_export.setEnabled(False)
+        self._export_worker.start()
 
     def _toggle_theme(self, checked: bool) -> None:
         self._settings.theme = "dark" if checked else "light"
         apply_theme(self._app, self._settings)
 
+    def _show_syntax_reference(self) -> None:
+        docs_path = Path(__file__).resolve().parents[3] / "docs" / "syntax.md"
+        if not docs_path.exists():
+            QMessageBox.warning(self, "Syntax Reference", "Could not find docs/syntax.md.")
+            return
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(docs_path))):
+            QMessageBox.warning(self, "Syntax Reference", f"Failed to open: {docs_path}")
+
+    @Slot(str)
+    def _on_export_progress(self, message: str) -> None:
+        self._set_render_status(message)
+
+    @Slot(str)
+    def _on_export_completed(self, output_path: str) -> None:
+        self._set_render_status(f"Export complete: {output_path}")
+        QMessageBox.information(self, "Export", f"Export completed:\n{output_path}")
+
+    @Slot(object)
+    def _on_export_failed(self, error: object) -> None:
+        typed_error = error if isinstance(error, WireVizStudioError) else WireVizStudioError(str(error))
+        message = f"{typed_error.__class__.__name__}: {typed_error}"
+        self._set_render_status(f"Export failed: {message}")
+        QMessageBox.critical(self, "Export Error", message)
+
+    @Slot()
+    def _on_export_finished(self) -> None:
+        self.act_export.setEnabled(True)
+        if self._export_worker is not None:
+            self._export_worker.deleteLater()
+            self._export_worker = None
+
     def _show_about(self) -> None:
         QMessageBox.information(
             self,
             "About",
-            f"{APP_NAME}\n\nPhase 3 shell is active: editor, render preview, BOM tab, and settings persistence.",
+            f"{APP_NAME}\n\nWireViz Studio with multi-tab editing, manual rendering, preview tabs, and export support.",
         )
 
     def _push_recent_file(self, file_path: Path) -> None:
@@ -336,6 +406,10 @@ class MainWindow(QMainWindow):
         if self._render_worker and self._render_worker.isRunning():
             self._render_worker.requestInterruption()
             self._render_worker.wait(2000)
+        if self._export_worker and self._export_worker.isRunning():
+            self._export_worker.requestInterruption()
+            self._export_worker.wait(2000)
+
         self._settings.window_geometry = self.saveGeometry()
         self._settings.window_state = self.saveState()
         self._settings.splitter_sizes = self._splitter.sizes()

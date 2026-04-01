@@ -13,7 +13,7 @@ from wireviz_studio.core.parser import parse_yaml
 
 class RenderWorker(QThread):
 	render_complete = Signal(str, list)
-	render_error = Signal(str)
+	render_error = Signal(object)
 
 	def __init__(self, yaml_text: str, base_path: Path | None = None) -> None:
 		super().__init__()
@@ -46,5 +46,7 @@ class RenderWorker(QThread):
 
 			bom_rows = harness.bom()
 			self.render_complete.emit(svg_data, bom_rows)
+		except WireVizStudioError as exc:
+			self.render_error.emit(exc)
 		except Exception as exc:
-			self.render_error.emit(str(exc))
+			self.render_error.emit(WireVizStudioError(str(exc)))

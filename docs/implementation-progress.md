@@ -28,6 +28,15 @@ This file is the physical progress log for the transformation plan.
 - [x] Step 3.6: Implemented light/dark theme files and runtime application
 - [x] Step 3.7: Implemented `QSettings` wrapper for theme, recent files, geometry/state, splitter sizes, and export prefs
 
+### Phase 3 Completion Notes (Audit 2026-04-01)
+
+- [x] Step 3.1: Added Help -> Syntax Reference action and hook to open `docs/syntax.md`.
+- [x] Step 3.1: Added toolbar icons and action tooltips for New/Open/Save/Render/Export.
+- [x] Step 3.2: Implemented explicit Ctrl+Tab and Ctrl+Shift+Tab tab navigation shortcuts.
+- [x] Step 3.3: Added BOM copy-to-clipboard behavior (Ctrl+C + context menu Copy).
+- [x] Step 3.4: Updated render error flow to propagate typed `WireVizStudioError` objects.
+- [x] Step 3.5: Implemented export backend execution (PNG/SVG/PDF/CSV) on worker thread with status updates.
+
 ## Phase 1 Detail
 
 - [x] Step 1.1: Create planned package and support directory structure

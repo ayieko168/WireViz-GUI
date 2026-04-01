@@ -115,6 +115,30 @@ jobs:
         if: matrix.target == 'windows-installer'
         run: choco install nsis --yes
 
+      - name: Add NSIS to PATH (Windows)
+        if: matrix.target == 'windows-installer'
+        shell: pwsh
+        run: |
+          $candidateDirs = @(
+            "$env:ProgramFiles(x86)\NSIS",
+            "$env:ProgramW6432\NSIS",
+            "$env:ProgramFiles\NSIS"
+          )
+          $nsisDir = $null
+          foreach ($dir in $candidateDirs) {
+            if ($dir -and (Test-Path (Join-Path $dir 'makensis.exe'))) {
+              $nsisDir = $dir
+              break
+            }
+          }
+
+          if (-not $nsisDir) {
+            throw 'makensis.exe not found after NSIS installation'
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value $nsisDir
+          & (Join-Path $nsisDir 'makensis.exe') /VERSION
+
       - name: Install AppImage tool (Linux)
         if: matrix.target == 'linux-appimage'
         run: |

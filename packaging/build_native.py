@@ -77,6 +77,27 @@ def _artifact_dir(target: str) -> Path:
     return DIST_ARTIFACTS / target / _platform_tag() / _python_tag()
 
 
+def _resolve_makensis() -> str | None:
+    makensis = shutil.which("makensis")
+    if makensis:
+        return makensis
+
+    if _platform_tag() != "windows":
+        return None
+
+    program_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
+    program_files = os.environ.get("ProgramW6432") or os.environ.get("ProgramFiles", r"C:\Program Files")
+    candidates = [
+        Path(program_files_x86) / "NSIS" / "makensis.exe",
+        Path(program_files) / "NSIS" / "makensis.exe",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+
+    return None
+
+
 def _remove_path(path: Path) -> None:
     if path.is_dir():
         shutil.rmtree(path)
@@ -158,7 +179,7 @@ def _build_windows_installer(app_dir: Path, target: str, version_text: str) -> P
     if _platform_tag() != "windows":
         raise RuntimeError("windows-installer target can only run on Windows")
 
-    makensis = shutil.which("makensis")
+    makensis = _resolve_makensis()
     if not makensis:
         raise RuntimeError("makensis not found. Install NSIS and ensure it is in PATH.")
 

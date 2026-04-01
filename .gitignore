@@ -11,12 +11,16 @@ venv/
 .venv/
 __pycache__/
 *.pyc
+.coverage
+.coverage.*
 .pytest_cache/
 .ruff_cache/
 
 # Packaging / build artifacts
 build/
 dist/
+dist-artifacts/
+*.spec
 .eggs/
 *.egg-info/
 pip-wheel-metadata/

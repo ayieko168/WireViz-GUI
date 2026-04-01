@@ -8,7 +8,7 @@ This file is the physical progress log for the transformation plan.
 - [x] Phase 2 - GraphViz Binary Management
 - [x] Phase 3 - PySide6 GUI
 - [x] Phase 4 - Testing
-- [ ] Phase 5 - CI/CD and Packaging
+- [ ] Phase 5 - CI/CD and Packaging (in progress)
 - [ ] Phase 6 - Documentation
 
 ## Phase 2 Detail
@@ -46,6 +46,14 @@ This file is the physical progress log for the transformation plan.
 - [x] Step 4.5: Added parser edge-case/negative-path tests and fixture-driven scenario coverage in `tests/core/test_parser.py`.
 - [x] Step 4.6: Added export integration coverage in `tests/core/test_export.py` for backend output writing and worker dispatch/path normalization.
 
+## Phase 5 Detail
+
+- [x] Step 5.1: Replaced legacy examples-only workflow with cross-platform CI matrix in `.github/workflows/main.yml` (Windows/macOS/Linux, Python 3.10-3.12, ruff, pytest, coverage gate).
+- [x] Step 5.2: Added tag-triggered release workflow `.github/workflows/release.yml` to build and publish platform artifacts.
+- [x] Step 5.3: Added `packaging/build_portable.py` for PyInstaller-based portable bundle creation and archive generation.
+- [x] Step 5.4: Updated `packaging/README.md` with CI/release workflow and local packaging usage.
+- [ ] Step 5.5: Add installer-native packaging targets (Windows installer, macOS DMG, Linux AppImage) and signing/notarization pipeline.
+
 ## Phase 1 Detail
 
 - [x] Step 1.1: Create planned package and support directory structure
@@ -67,3 +75,5 @@ This file is the physical progress log for the transformation plan.
 - Validation (Phase 3): GUI modules import cleanly (`PYTHONPATH=src`, import `wireviz_studio.gui.app`) and core tests remain green.
 - Validation (Phase 4 start): `./venv/Scripts/python.exe -m pytest tests/core -q` passed with 20 tests on 2026-04-01.
 - Validation (Phase 4 expansion): `./venv/Scripts/python.exe -m pytest tests/core -q` passed with 30 tests on 2026-04-01.
+- Validation (Phase 5 CI baseline): `./venv/Scripts/python.exe -m pytest tests/core -q` passed with 30 tests on 2026-04-01.
+- Validation (Phase 5 packaging smoke): `./venv/Scripts/python.exe packaging/build_portable.py` produced `dist-artifacts/wireviz-studio-windows.zip` on 2026-04-01.

@@ -10,6 +10,12 @@ from pathlib import Path
 from typing import Optional
 
 
+def _subprocess_windows_flags() -> int:
+	if platform.system().lower().startswith("win"):
+		return getattr(subprocess, "CREATE_NO_WINDOW", 0)
+	return 0
+
+
 def verify_dot(dot_path: Path) -> bool:
 	"""Return True when executable responds successfully to `dot -V`."""
 	try:
@@ -19,6 +25,7 @@ def verify_dot(dot_path: Path) -> bool:
 			text=True,
 			timeout=5,
 			check=False,
+			creationflags=_subprocess_windows_flags(),
 		)
 		return completed.returncode == 0 and "graphviz" in (
 			(completed.stderr or "") + (completed.stdout or "")
@@ -36,6 +43,7 @@ def dot_version(dot_path: Path) -> Optional[str]:
 			text=True,
 			timeout=5,
 			check=False,
+			creationflags=_subprocess_windows_flags(),
 		)
 	except (OSError, subprocess.SubprocessError):
 		return None

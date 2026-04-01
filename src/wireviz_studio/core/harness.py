@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import re
-import shutil
 from collections import Counter
 from dataclasses import dataclass
 from itertools import zip_longest
@@ -21,6 +20,7 @@ from wireviz_studio.core.bom import (
 )
 from wireviz_studio.core.colors import get_color_hex, translate_color
 from wireviz_studio.core.exceptions import GraphVizNotFoundError, RenderError
+from wireviz_studio.graphviz_manager import resolve_dot_binary
 from wireviz_studio.core.graphviz_html import (
     html_bgcolor,
     html_bgcolor_attr,
@@ -654,22 +654,20 @@ class Harness:
         return embed_svg_images(graph.pipe(format="svg").decode("utf-8"), Path.cwd())
 
     def render_png(self) -> bytes:
-        if shutil.which("dot") is None:
-            raise GraphVizNotFoundError(
-                "GraphViz dot executable was not found on PATH."
-            )
         try:
+            resolve_dot_binary()
             return self.png
+        except FileNotFoundError as exc:
+            raise GraphVizNotFoundError(str(exc)) from exc
         except Exception as exc:
             raise RenderError(str(exc)) from exc
 
     def render_svg(self) -> str:
-        if shutil.which("dot") is None:
-            raise GraphVizNotFoundError(
-                "GraphViz dot executable was not found on PATH."
-            )
         try:
+            resolve_dot_binary()
             return self.svg
+        except FileNotFoundError as exc:
+            raise GraphVizNotFoundError(str(exc)) from exc
         except Exception as exc:
             raise RenderError(str(exc)) from exc
 

@@ -5,11 +5,18 @@ This file is the physical progress log for the transformation plan.
 ## Phase Status
 
 - [x] Phase 1 - Project Restructure and Core Refactor
-- [ ] Phase 2 - GraphViz Binary Management
+- [x] Phase 2 - GraphViz Binary Management
 - [ ] Phase 3 - PySide6 GUI
 - [ ] Phase 4 - Testing
 - [ ] Phase 5 - CI/CD and Packaging
 - [ ] Phase 6 - Documentation
+
+## Phase 2 Detail
+
+- [x] Step 2.1: Implemented `graphviz_manager` resolution order (bundled -> system -> error)
+- [x] Step 2.1: Added `dot -V` verification and environment setup (`GRAPHVIZ_DOT`, `PATH`)
+- [x] Step 2.1: Integrated resolver into `Harness.render_svg()` / `Harness.render_png()`
+- [x] Step 2.2: Added checksum-verified archive downloader utility and CI-friendly script scaffold
 
 ## Phase 1 Detail
 
@@ -27,4 +34,5 @@ This file is the physical progress log for the transformation plan.
 - Normalized several copied core internals to clearer snake_case local variable names without changing logical flow.
 - Pruned obvious non-runtime GraphViz bundle content (`include`, `share/man`, `lib/pkgconfig`, `lib/cmake`, `.lib`, sample `share/graphviz/graphs`) and verified bundled `dot.exe` still renders SVG.
 - Validation: `./venv/Scripts/python.exe -m pytest tests/core -q` passed on 2026-04-01.
-- Rendering now raises `GraphVizNotFoundError` when the `dot` executable is unavailable; bundled/system GraphViz resolution remains Phase 2 work.
+- Validation (Phase 2): `./venv/Scripts/python.exe -m pytest tests/core -q` passed with 4 tests.
+- GraphViz resolution now prefers bundled binaries, then system install, then raises `GraphVizNotFoundError`.

@@ -100,5 +100,17 @@ class AppSettings:
 	def export_dialog_size(self, value: QSize) -> None:
 		self._settings.setValue("export/dialog_size", value)
 
+	@property
+	def editor_tab_spaces(self) -> int:
+		value = self._settings.value("editor/tab_spaces", 2)
+		try:
+			return max(1, int(value))
+		except (TypeError, ValueError):
+			return 2
+
+	@editor_tab_spaces.setter
+	def editor_tab_spaces(self, value: int) -> None:
+		self._settings.setValue("editor/tab_spaces", max(1, int(value)))
+
 	def sync(self) -> None:
 		self._settings.sync()

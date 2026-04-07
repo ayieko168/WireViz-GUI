@@ -16,6 +16,7 @@ dependencies = [
 	"graphviz==0.21",
 	"Pillow==12.1.1",
 	"PyYAML==6.0.3",
+	"ruamel.yaml==0.18.16",
 ]
 
 [project.optional-dependencies]

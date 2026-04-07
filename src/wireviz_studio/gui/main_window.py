@@ -9,6 +9,7 @@ from PySide6.QtGui import QAction, QCloseEvent, QDesktopServices, QKeySequence, 
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
+    QInputDialog,
     QMainWindow,
     QMessageBox,
     QSplitter,
@@ -19,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from wireviz_studio import APP_NAME
+from wireviz_studio.core.yaml_formatter import format_yaml_text
 from wireviz_studio.graphviz_manager import resolve_dot_version
 from wireviz_studio.gui.editor import EditorTabs
 from wireviz_studio.core.exceptions import WireVizStudioError
@@ -43,7 +45,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(APP_NAME)
         self.resize(1360, 820)
 
-        self.editor_tabs = EditorTabs(self)
+        self.editor_tabs = EditorTabs(self, tab_spaces=self._settings.editor_tab_spaces)
         self.preview_panel = PreviewPanel(self)
 
         splitter = QSplitter(Qt.Orientation.Horizontal, self)
@@ -107,6 +109,15 @@ class MainWindow(QMainWindow):
         self.act_render.setToolTip("Render diagram and BOM")
         self.act_render.triggered.connect(self._render_current)
 
+        self.act_format_yaml = QAction("Format YAML", self)
+        self.act_format_yaml.setShortcut(QKeySequence("Ctrl+Shift+I"))
+        self.act_format_yaml.setToolTip("Normalize YAML whitespace and indentation")
+        self.act_format_yaml.triggered.connect(self._format_current_yaml)
+
+        self.act_editor_indent = QAction("Indent Width...", self)
+        self.act_editor_indent.setToolTip("Set editor indentation width in spaces")
+        self.act_editor_indent.triggered.connect(self._choose_editor_indent_width)
+
         self.act_export = QAction("Export", self)
         self.act_export.setToolTip("Export rendered output")
         self.act_export.triggered.connect(self._show_export_dialog)
@@ -150,6 +161,9 @@ class MainWindow(QMainWindow):
         menu_view.addAction(self.act_fit)
 
         menu_tools = self.menuBar().addMenu("Tools")
+        menu_tools.addAction(self.act_format_yaml)
+        menu_tools.addAction(self.act_editor_indent)
+        menu_tools.addSeparator()
         menu_tools.addAction(self.act_render)
         menu_tools.addAction(self.act_export)
         menu_tools.addSeparator()
@@ -174,6 +188,7 @@ class MainWindow(QMainWindow):
         toolbar.addWidget(spacer)
 
         toolbar.addSeparator()
+        toolbar.addAction(self.act_format_yaml)
         toolbar.addAction(self.act_render)
         toolbar.addAction(self.act_export)
 
@@ -233,6 +248,53 @@ class MainWindow(QMainWindow):
         if saved:
             self._push_recent_file(saved)
             self._set_render_status(f"Saved: {saved.name}")
+
+    def _format_current_yaml(self) -> None:
+        editor = self.editor_tabs.current_editor()
+        if not editor:
+            return
+
+        try:
+            formatted = format_yaml_text(
+                editor.toPlainText(), indent_spaces=self._settings.editor_tab_spaces
+            )
+        except WireVizStudioError as exc:
+            self._set_render_status(f"Format failed: {exc}")
+            QMessageBox.critical(self, "Format YAML", f"{exc.__class__.__name__}: {exc}")
+            return
+
+        if formatted == editor.toPlainText():
+            self._set_render_status("YAML already formatted")
+            return
+
+        cursor = editor.textCursor()
+        position = cursor.position()
+        anchor = cursor.anchor()
+        cursor.beginEditBlock()
+        editor.setPlainText(formatted)
+        cursor = editor.textCursor()
+        max_pos = len(formatted)
+        cursor.setPosition(min(anchor, max_pos))
+        cursor.setPosition(min(position, max_pos), cursor.MoveMode.KeepAnchor)
+        editor.setTextCursor(cursor)
+        cursor.endEditBlock()
+        self._set_render_status("YAML formatted")
+
+    def _choose_editor_indent_width(self) -> None:
+        value, accepted = QInputDialog.getInt(
+            self,
+            "Indent Width",
+            "Spaces per indent level",
+            value=self._settings.editor_tab_spaces,
+            minValue=1,
+            maxValue=8,
+        )
+        if not accepted:
+            return
+
+        self._settings.editor_tab_spaces = value
+        self.editor_tabs.set_tab_spaces(value)
+        self._set_render_status(f"Indent width set to {value} spaces")
 
     def _render_current(self) -> None:
         editor = self.editor_tabs.current_editor()

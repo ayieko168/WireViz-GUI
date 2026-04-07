@@ -3,6 +3,7 @@ import pytest
 from wireviz_studio.core.exceptions import GraphVizNotFoundError, RenderError
 from wireviz_studio.core.harness import Harness
 from wireviz_studio.core.models import Metadata, Options, Tweak
+from wireviz_studio.core.parser import parse_yaml
 
 
 def _make_harness() -> Harness:
@@ -50,3 +51,40 @@ def test_render_svg_maps_unexpected_failures_to_render_error(monkeypatch):
 
     with pytest.raises(RenderError):
         harness.render_svg()
+
+
+def test_create_graph_supports_numeric_pinlabels_and_wirelabels():
+    harness = parse_yaml(
+        {
+            "connectors": {
+                "X1": {
+                    "type": "DJ7091Y",
+                    "subtype": "female",
+                    "pinlabels": [17, 20, 19, 18, 16, 15, 12, 14, 13],
+                },
+                "X2": {
+                    "pincount": 3,
+                },
+            },
+            "cables": {
+                "W1": {
+                    "wirecount": 3,
+                    "wirelabels": [101, 102, 103],
+                    "length": 1,
+                },
+            },
+            "connections": [
+                [
+                    {"X1": [7, 5, 6]},
+                    {"W1": ["1-3"]},
+                    {"X2": [1, 2, 3]},
+                ]
+            ],
+        }
+    )
+
+    graph = harness.create_graph()
+    body = "\n".join(graph.body)
+
+    assert "X1:7:12" in body
+    assert "1:101" in body

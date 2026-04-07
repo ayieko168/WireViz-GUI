@@ -348,7 +348,7 @@ class Harness:
                 if colorstr:
                     wireinfo.append(colorstr)
                 if cable.wirelabels:
-                    wireinfo.append(wirelabel if wirelabel is not None else "")
+                    wireinfo.append(str(wirelabel) if wirelabel is not None else "")
                 wirehtml.append(f'     {":".join(wireinfo)}')
 
                 wirehtml.append(f"    </td>")
@@ -480,7 +480,7 @@ class Harness:
                         if from_connector.pinlabels:
                             pinlabel = from_connector.pinlabels[from_pin_index]
                             if pinlabel != "":
-                                from_info.append(pinlabel)
+                                from_info.append(str(pinlabel))
                         from_string = ":".join(from_info)
                     else:
                         from_string = ""
@@ -502,7 +502,7 @@ class Harness:
                         if to_connector.pinlabels:
                             pinlabel = to_connector.pinlabels[to_pin_index]
                             if pinlabel != "":
-                                to_info.append(pinlabel)
+                                to_info.append(str(pinlabel))
                         to_string = ":".join(to_info)
                     else:
                         to_string = ""

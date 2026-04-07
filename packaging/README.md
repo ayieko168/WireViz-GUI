@@ -51,6 +51,9 @@ Native targets use `packaging/build_native.py` and produce platform-specific art
 Requirements:
 
 - NSIS (`makensis`) available in PATH
+- Default install location: `LocalAppData\\Programs\\WireViz Studio` (per-user, no elevation)
+- Installer payload: unpacked PyInstaller app directory, not a single-file bundle
+- Installer prompts for Start Menu and Desktop shortcuts, both enabled by default
 
 Command:
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import QRect, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QPainter, QTextFormat
+from PySide6.QtGui import QColor, QFont, QKeyEvent, QPainter, QTextCursor, QTextFormat
 from PySide6.QtWidgets import QPlainTextEdit, QTabBar, QTabWidget, QTextEdit, QToolButton, QWidget
 
 from wireviz_studio.gui.highlighter import YamlHighlighter
@@ -26,14 +26,15 @@ class _LineNumberArea(QWidget):
 class CodeEditor(QPlainTextEdit):
 	modifiedChanged = Signal(bool)
 
-	def __init__(self, parent=None) -> None:
+	def __init__(self, parent=None, tab_spaces: int = 2) -> None:
 		super().__init__(parent)
 		self.file_path: Path | None = None
 		self._line_number_area = _LineNumberArea(self)
+		self._tab_spaces = max(1, tab_spaces)
 
 		self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
-		self.setTabStopDistance(4 * self.fontMetrics().horizontalAdvance(" "))
 		self.setFont(QFont("Consolas", 10))
+		self.set_tab_spaces(self._tab_spaces)
 		YamlHighlighter(self.document())
 
 		self.blockCountChanged.connect(self._update_line_number_area_width)
@@ -43,6 +44,97 @@ class CodeEditor(QPlainTextEdit):
 
 		self._update_line_number_area_width(0)
 		self._highlight_current_line()
+
+	def set_tab_spaces(self, tab_spaces: int) -> None:
+		self._tab_spaces = max(1, tab_spaces)
+		self.setTabStopDistance(self._tab_spaces * self.fontMetrics().horizontalAdvance(" "))
+
+	def tab_spaces(self) -> int:
+		return self._tab_spaces
+
+	def keyPressEvent(self, event: QKeyEvent) -> None:
+		if event.key() == Qt.Key.Key_Tab and event.modifiers() == Qt.KeyboardModifier.NoModifier:
+			self._indent_selection()
+			return
+		if event.key() == Qt.Key.Key_Backtab:
+			self._outdent_selection()
+			return
+		super().keyPressEvent(event)
+
+	def _indent_selection(self) -> None:
+		cursor = self.textCursor()
+		if not cursor.hasSelection():
+			spaces = self._spaces_to_next_tab_stop(cursor)
+			cursor.insertText(" " * spaces)
+			return
+
+		start = cursor.selectionStart()
+		end = cursor.selectionEnd()
+		cursor.beginEditBlock()
+		cursor.setPosition(start)
+		start_block = cursor.blockNumber()
+		cursor.setPosition(end)
+		if cursor.positionInBlock() == 0 and end > start:
+			end_block = max(start_block, cursor.blockNumber() - 1)
+		else:
+			end_block = cursor.blockNumber()
+
+		cursor.setPosition(start)
+		cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock)
+		for _ in range(start_block, end_block + 1):
+			cursor.insertText(" " * self._tab_spaces)
+			if not cursor.movePosition(QTextCursor.MoveOperation.NextBlock):
+				break
+		cursor.endEditBlock()
+
+	def _outdent_selection(self) -> None:
+		cursor = self.textCursor()
+		start = cursor.selectionStart()
+		end = cursor.selectionEnd()
+		cursor.beginEditBlock()
+		if not cursor.hasSelection():
+			cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock)
+			self._remove_leading_spaces(cursor)
+			cursor.endEditBlock()
+			return
+
+		cursor.setPosition(start)
+		start_block = cursor.blockNumber()
+		cursor.setPosition(end)
+		if cursor.positionInBlock() == 0 and end > start:
+			end_block = max(start_block, cursor.blockNumber() - 1)
+		else:
+			end_block = cursor.blockNumber()
+
+		cursor.setPosition(start)
+		cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock)
+		for _ in range(start_block, end_block + 1):
+			self._remove_leading_spaces(cursor)
+			if not cursor.movePosition(QTextCursor.MoveOperation.NextBlock):
+				break
+		cursor.endEditBlock()
+
+	def _remove_leading_spaces(self, cursor: QTextCursor) -> None:
+		cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock)
+		cursor.movePosition(
+			QTextCursor.MoveOperation.NextCharacter,
+			QTextCursor.MoveMode.KeepAnchor,
+			self._tab_spaces,
+		)
+		selected = cursor.selectedText()
+		space_count = len(selected) - len(selected.lstrip(" "))
+		if space_count > 0:
+			cursor.setPosition(cursor.selectionStart())
+			cursor.movePosition(
+				QTextCursor.MoveOperation.NextCharacter,
+				QTextCursor.MoveMode.KeepAnchor,
+				space_count,
+			)
+			cursor.removeSelectedText()
+
+	def _spaces_to_next_tab_stop(self, cursor: QTextCursor) -> int:
+		column = cursor.positionInBlock()
+		return self._tab_spaces - (column % self._tab_spaces) or self._tab_spaces
 
 	def line_number_area_width(self) -> int:
 		digits = len(str(max(1, self.blockCount())))
@@ -124,13 +216,24 @@ class EditorTabs(QTabWidget):
 	currentFilePathChanged = Signal(str)
 	currentContentChanged = Signal()
 
-	def __init__(self, parent=None) -> None:
+	def __init__(self, parent=None, tab_spaces: int = 2) -> None:
 		super().__init__(parent)
+		self._tab_spaces = max(1, tab_spaces)
 		self.setObjectName("editor_tabs")
 		self.setTabsClosable(True)
 		self.setMovable(True)
 		self.tabCloseRequested.connect(self.close_tab)
 		self.currentChanged.connect(self._on_current_changed)
+
+	def set_tab_spaces(self, tab_spaces: int) -> None:
+		self._tab_spaces = max(1, tab_spaces)
+		for index in range(self.count()):
+			editor = self.widget(index)
+			if isinstance(editor, CodeEditor):
+				editor.set_tab_spaces(self._tab_spaces)
+
+	def tab_spaces(self) -> int:
+		return self._tab_spaces
 
 	def _make_close_button(self) -> QToolButton:
 		button = QToolButton(self)
@@ -160,7 +263,7 @@ class EditorTabs(QTabWidget):
 				return
 
 	def new_tab(self, text: str = "", file_path: Path | None = None) -> int:
-		editor = CodeEditor(self)
+		editor = CodeEditor(self, tab_spaces=self._tab_spaces)
 		editor.setPlainText(text)
 		editor.document().setModified(False)
 		editor.file_path = file_path

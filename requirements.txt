@@ -1,6 +1,7 @@
 graphviz
 Pillow
 PyYAML
+ruamel.yaml
 PySide6
 pytest
 pytest-cov

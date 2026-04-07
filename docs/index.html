@@ -3,8 +3,33 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WireViz Studio</title>
-  <meta name="description" content="WireViz Studio is a cross-platform desktop app for wiring harness diagrams and BOM export from YAML.">
+  <title>WireViz Studio | Desktop YAML Wiring Harness Diagram Builder</title>
+  <meta name="description" content="WireViz Studio is a cross-platform desktop app for WireViz-compatible YAML wiring harness diagrams, connector pinouts, cable documentation, and BOM export.">
+  <meta name="keywords" content="WireViz Studio, WireViz GUI, wiring harness diagram, connector pinout, cable documentation, YAML diagram generator, bill of materials, Graphviz wiring tool">
+  <meta name="author" content="WireViz Studio Contributors">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="WireViz Studio | Desktop YAML Wiring Harness Diagram Builder">
+  <meta property="og:description" content="Create wiring harness diagrams, connector pinouts, and BOM exports from YAML with a desktop workflow built around the WireViz syntax model.">
+  <meta property="og:image" content="screenshots/wireviz-studio.png">
+  <meta property="og:locale" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="WireViz Studio | Desktop YAML Wiring Harness Diagram Builder">
+  <meta name="twitter:description" content="Desktop editing, rendering, preview, and export for WireViz-compatible YAML harness documentation.">
+  <meta name="twitter:image" content="screenshots/wireviz-studio.png">
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "WireViz Studio",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Windows, macOS, Linux",
+      "license": "https://spdx.org/licenses/GPL-3.0-only.html",
+      "description": "Cross-platform desktop software for editing WireViz-compatible YAML, generating wiring harness diagrams, reviewing BOMs, and exporting deliverables.",
+      "image": "screenshots/wireviz-studio.png",
+      "softwareRequirements": "Python 3.10+ for source installs; GraphViz available in PATH or bundled_graphviz"
+    }
+  </script>
   <style>
     :root {
       --bg: #f4f1ea;
@@ -15,6 +40,7 @@
       --brand-2: #f4a259;
       --card: #fffdf8;
       --border: #d6d0c2;
+      --ink-soft: #2b474f;
     }
 
     * {
@@ -66,6 +92,33 @@
       font-size: 1.05rem;
     }
 
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 0.8rem;
+      padding: 0.32rem 0.7rem;
+      border-radius: 999px;
+      background: rgba(15, 107, 99, 0.1);
+      color: var(--brand);
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .lede {
+      margin: 1rem 0 0;
+      color: var(--ink-soft);
+    }
+
+    .credit {
+      margin-top: 1rem;
+      padding: 0.9rem 1rem;
+      border-left: 4px solid var(--brand-2);
+      background: rgba(244, 162, 89, 0.08);
+      border-radius: 10px;
+      color: var(--ink-soft);
+    }
+
     .actions {
       display: flex;
       flex-wrap: wrap;
@@ -112,6 +165,13 @@
       margin-top: 1rem;
     }
 
+    .two-up {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
     h2 {
       margin: 0 0 0.5rem;
       font-size: 1.1rem;
@@ -126,6 +186,46 @@
 
     li {
       margin: 0.25rem 0;
+    }
+
+    p {
+      margin: 0.45rem 0 0;
+      color: var(--muted);
+    }
+
+    .section-title {
+      margin: 2rem 0 0.7rem;
+      font-size: 1.4rem;
+    }
+
+    .pill-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.42rem 0.72rem;
+      border-radius: 999px;
+      background: rgba(15, 107, 99, 0.08);
+      border: 1px solid rgba(15, 107, 99, 0.14);
+      color: var(--brand);
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+
+    .faq dt {
+      margin-top: 0.9rem;
+      font-weight: 700;
+      color: #153d44;
+    }
+
+    .faq dd {
+      margin: 0.3rem 0 0;
+      color: var(--muted);
     }
 
     .footer {
@@ -143,6 +243,10 @@
       .grid {
         grid-template-columns: 1fr;
       }
+
+      .two-up {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -150,27 +254,48 @@
   <main class="wrap">
     <section class="hero">
       <div class="card">
+        <span class="eyebrow">Desktop WireViz Workflow</span>
         <h1>WireViz Studio</h1>
-        <p class="tagline">Desktop YAML-to-diagram workflow for wiring harnesses, with BOM preview and one-click exports.</p>
+        <p class="tagline">A richer desktop workflow for WireViz-compatible YAML, wiring harness diagrams, connector pinouts, BOM review, and export-ready deliverables.</p>
         <div class="actions">
-          <a class="btn" href="https://github.com/ayieko168/WireViz-GUI/releases">Download Releases</a>
+          <a class="btn" href="https://github.com/ayieko168/wireviz-studio/releases/latest">Download Releases</a>
           <a class="btn alt" href="README.md">Documentation</a>
           <a class="btn alt" href="syntax.md">Syntax Reference</a>
+          <a class="btn alt" href="https://github.com/wireviz/WireViz">Original WireViz</a>
         </div>
+        <p class="lede">WireViz Studio keeps the YAML-first approach that makes WireViz valuable for version control and engineering review, then adds a desktop editor, preview flow, GraphViz setup assistance, and packaging for end-user distribution.</p>
+        <div class="credit">
+          Credit: WireViz Studio builds on the ideas, syntax model, and harness-documentation workflow popularized by the original <a href="https://github.com/wireviz/WireViz">WireViz</a> project. If you need the original CLI-first tool, upstream documentation and releases remain available there.
+        </div>
+        <p class="lede"><strong>Creator:</strong> <a href="https://github.com/ayieko168">ayieko168</a></p>
       </div>
       <div class="card">
-        <img class="preview" src="screenshots/wireviz-studio.png" alt="WireViz Studio application window preview">
+        <img class="preview" src="screenshots/wireviz-studio.png" alt="WireViz Studio desktop application showing YAML editing, rendered wiring diagram preview, and BOM workflow">
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">What WireViz Studio Is For</h2>
+      <div class="pill-list" aria-label="Primary search topics">
+        <span class="pill">Wiring harness diagrams</span>
+        <span class="pill">Connector pinout documentation</span>
+        <span class="pill">Cable assembly specs</span>
+        <span class="pill">YAML-based BOM generation</span>
+        <span class="pill">GraphViz-backed diagram export</span>
+        <span class="pill">Cross-platform desktop workflow</span>
       </div>
     </section>
 
     <section class="grid">
       <article class="card">
-        <h2>Build Targets</h2>
+        <h2>Latest Release Packages</h2>
         <ul>
-          <li>Windows installer (.exe)</li>
-          <li>Windows portable (.zip)</li>
-          <li>macOS disk image (.dmg)</li>
-          <li>Linux AppImage (.AppImage)</li>
+          <li><a href="https://github.com/ayieko168/wireviz-studio/releases/download/v1.0.1/wireviz-studio-1.0.1-installer-windows-py3.13.exe">Windows installer (.exe)</a></li>
+          <li><a href="https://github.com/ayieko168/wireviz-studio/releases/download/v1.0.1/wireviz-studio-1.0.1-portable-windows-py3.13.zip">Windows portable (.zip)</a></li>
+          <li><a href="https://github.com/ayieko168/wireviz-studio/releases/download/v1.0.1/wireviz-studio-1.0.1-dmg-macos-py3.13.dmg">macOS disk image (.dmg)</a></li>
+          <li><a href="https://github.com/ayieko168/wireviz-studio/releases/download/v1.0.1/wireviz-studio-1.0.1-portable-macos-py3.13.tar.gz">macOS portable (.tar.gz)</a></li>
+          <li><a href="https://github.com/ayieko168/wireviz-studio/releases/download/v1.0.1/wireviz-studio-1.0.1-appimage-linux-py3.13.AppImage">Linux AppImage (.AppImage)</a></li>
+          <li><a href="https://github.com/ayieko168/wireviz-studio/releases/download/v1.0.1/wireviz-studio-1.0.1-portable-linux-py3.13.tar.gz">Linux portable (.tar.gz)</a></li>
         </ul>
       </article>
 
@@ -178,6 +303,7 @@
         <h2>Core Features</h2>
         <ul>
           <li>Multi-tab YAML editor with highlighting</li>
+          <li>Manual YAML formatting with consistent indentation</li>
           <li>Manual render for predictable iteration</li>
           <li>Diagram and BOM tabbed preview</li>
           <li>PNG, SVG, PDF, and CSV export</li>
@@ -187,15 +313,51 @@
       <article class="card">
         <h2>Project Links</h2>
         <ul>
-          <li><a href="https://github.com/ayieko168/WireViz-GUI">Repository</a></li>
+          <li><a href="https://github.com/ayieko168/wireviz-studio">Repository</a></li>
+          <li><a href="https://github.com/wireviz/WireViz">Original WireViz Project</a></li>
           <li><a href="CONTRIBUTING.md">Contributing</a></li>
           <li><a href="CHANGELOG.md">Changelog</a></li>
-          <li><a href="implementation-progress.md">Implementation Progress</a></li>
         </ul>
       </article>
     </section>
 
-    <p class="footer">WireViz Studio is licensed under GPL-3.0-only.</p>
+    <section class="two-up">
+      <article class="card">
+        <h2>Why Teams Use It</h2>
+        <ul>
+          <li>Readable YAML harness definitions that work well in Git</li>
+          <li>Desktop-friendly workflow for users who do not want a CLI-only tool</li>
+          <li>Fast feedback loop between authoring, rendering, BOM review, and export</li>
+          <li>WireViz-compatible concepts that lower onboarding friction for existing users</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>Typical Outputs</h2>
+        <ul>
+          <li>Harness diagrams for manufacturing or service documentation</li>
+          <li>Connector pinout references for integration work</li>
+          <li>Bill of materials tables for quoting and procurement</li>
+          <li>Shareable SVG, PNG, PDF, and CSV deliverables</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="card" style="margin-top: 1rem;">
+      <h2>WireViz Studio FAQ</h2>
+      <dl class="faq">
+        <dt>Is this the original WireViz tool?</dt>
+        <dd>No. WireViz Studio is a desktop application in the WireViz ecosystem and explicitly credits the original WireViz project for the YAML-driven harness documentation model.</dd>
+
+        <dt>Does it use the same YAML concepts?</dt>
+        <dd>Yes. The Studio documentation, syntax reference, tutorial material, and examples are centered on the WireViz-style YAML schema for connectors, cables, and connections.</dd>
+
+        <dt>Who is it best suited for?</dt>
+        <dd>Engineers, harness designers, technicians, and technical teams who want a GUI workflow for WireViz-compatible YAML without giving up versionable plain-text source files.</dd>
+      </dl>
+    </section>
+
+    <p class="footer">WireViz Studio is licensed under GPL-3.0-only and credits the original <a href="https://github.com/wireviz/WireViz">WireViz</a> project for the upstream YAML harness-documentation foundation.</p>
   </main>
 </body>
 </html>
